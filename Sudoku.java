@@ -11,6 +11,8 @@ import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.sql.Date;
@@ -26,6 +28,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.SwingConstants;
@@ -60,7 +63,7 @@ class History{
 	
 }
 //---------------------
-public class Sudoku extends JFrame implements ActionListener, Runnable {
+public class Sudoku extends JFrame implements ActionListener, KeyListener, Runnable {
 	public static final int FRAME_WIDTH = 800;
 	public static final int FRAME_HEIGHT = 500;
 	
@@ -72,6 +75,7 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 	
 	private List<History> history = new ArrayList<History>();
 	private boolean playing;
+	private static boolean note;
 	private Thread t;
 	
 	private NumLabel[][] p_ar;
@@ -82,6 +86,7 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 	private ArrayList<String>[] answer_v = new ArrayList[9];
 	private ArrayList<String>[] answer_h = new ArrayList[9];
 	private ArrayList<String>[] answer_s = new ArrayList[9];
+	private OptionLabel[] option;
 
 	private Set<NumLabel> group_active;
 
@@ -165,6 +170,7 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 		ButtonGroup bg = new ButtonGroup();
 		for(JRadioButton btn : levels) {
 			p_level.add(btn);
+			btn.setFocusable(false);
 			bg.add(btn);
 		}
 		level_easy.setSelected(true);
@@ -195,7 +201,7 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 
 		JPanel p_option = new JPanel();
 		p_option.setLayout(new GridLayout(2, 2, 0, 0));
-		OptionLabel[] option = new OptionLabel[4];
+		option = new OptionLabel[4];
 		String[] option_name = { "노트", "힌트", "실행취소", "지우기" };
 		for (int i = 0; i < 4; i++) {
 			option[i] = new OptionLabel(this, option_name[i], JLabel.CENTER);
@@ -210,40 +216,82 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 		p_east.add("Center", p_num);
 		p_east.add("South", p_option);
 
+		addKeyListener(this);
 		setVisible(true);
 	}
 	
 	public void answer_check(NumLabel lb_active, boolean record) {
+		// 한 줄 단위 체크 - 이펙트
 		Set<String> check  = new HashSet<String>();
 		for(NumLabel lb : list_v[lb_active.getGroup_v()-1]) {
 			if(!lb.getText().equals("")) check.add(lb.getText());
 		}
-		if(check.size() == 9) {
-			Thread effect = new Thread() {
-				@Override
-				public void run() {
-					for(int i = 0; i < 9; i++) {						
-						try {
-							list_v[lb_active.getGroup_v()-1].get(i).setBackground(NumLabel.color_clicked);
-							Thread.sleep(50);
-							list_v[lb_active.getGroup_v()-1].get(i).setBackground(Color.WHITE);
-							Thread.sleep(50);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-					}
-				}
-			};
-			if(record) effect.start();
-		}
+		if(check.size() == 9 && record) show_effect(list_v, lb_active.getGroup_v());
+		check.clear();
 		
+		for(NumLabel lb : list_h[lb_active.getGroup_h()-1]) {
+			if(!lb.getText().equals("")) check.add(lb.getText());
+		}
+		if(check.size() == 9 && record) show_effect(list_h, lb_active.getGroup_h());
+		check.clear();
+		
+		for(NumLabel lb : list_s[lb_active.getGroup_s()-1]) {
+			if(!lb.getText().equals("")) check.add(lb.getText());
+		}
+		if(check.size() == 9 && record) show_effect(list_s, lb_active.getGroup_s());
+		
+		// 전체 정답 체크
+		int count = 0;
+		for(NumLabel lb : list_all) {
+			if (!lb.getText().equals("") && !lb.isWrong()) count++;
+		}
+		if (count == 81) {
+			JOptionPane.showMessageDialog(this, "축하합니다!");
+			playing = false;
+		}
+	}
+	
+	public void show_effect(ArrayList<NumLabel>[] list_, int group) {
+		Thread effect = new Thread() {
+			@Override
+			public void run() {
+				int speed = 60;
+				try {
+					for(int i = 0; i < 9; i++) {						
+						list_[group-1].get(i).setBackground(NumLabel.color_active);
+						if(i!=0) list_[group-1].get(i-1).setBackground(NumLabel.color_sameNum);
+						if(i>1) list_[group-1].get(i-2).setBackground(NumLabel.color_sameGroup);
+						Thread.sleep(speed);
+					}
+					list_[group-1].get(8).setBackground(NumLabel.color_sameNum);
+					list_[group-1].get(7).setBackground(NumLabel.color_sameGroup);
+					Thread.sleep(speed);
+					list_[group-1].get(8).setBackground(NumLabel.color_sameGroup);
+					NumLabel.lb_active.setBackground(NumLabel.color_active);
+					
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		effect.start();
 	}
 	
 	public void setNumber(NumLabel lb_active, String num, boolean record) {
 		if(!lb_active.isEditable()) return;
-		if(lb_active.getText().equals(num)) return;
-		if(record) history.add(new History(lb_active, lb_active.getText()));
-		lb_active.setText(num);
+		if(note) {
+			if(!lb_active.getText().equals("")) {
+				history.add(new History(lb_active, lb_active.getText()));
+				lb_active.setText("");
+			}
+			lb_active.getNote().add(num);
+			lb_active.repaint();
+		}else {
+			if(lb_active.getText().equals(num)) return;
+			lb_active.getNote().clear();
+			if(record) history.add(new History(lb_active, lb_active.getText()));
+			lb_active.setText(num);
+		}
 		colorReset();
 		for(NumLabel lb : list_all) setColor(lb);
 		lb_active.setBackground(NumLabel.color_active);
@@ -253,6 +301,7 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 		}
 		lb_active.select(lb_active);
 		answer_check(lb_active, record);
+		
 	}
 	
 	public void colorReset() {
@@ -390,9 +439,10 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 	public List<History> getHistory() {
 		return history;
 	}
-
-	public static void main(String[] args) {
-		new Sudoku();
+	
+	public boolean note_on_off() {
+		note = !note;
+		return note;
 	}
 
 	@Override
@@ -407,6 +457,7 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 
 	@Override
 	public void run() {
+		// 플레이 시간 확인 - 레이블에 보여주기
 		int min = 0, sec = 0;
 		String strLevel = "";
 		if(level == Level.EASY) strLevel = "EASY";
@@ -428,4 +479,53 @@ public class Sudoku extends JFrame implements ActionListener, Runnable {
 		}
 	}
 	
+	@Override
+	public void keyPressed(KeyEvent e) {
+		NumLabel lb = NumLabel.lb_active;
+		if(lb == null) return;
+		if(e.getKeyCode()==KeyEvent.VK_UP) {
+			if(lb.getGroup_h()!=1) {
+				lb.select(list_v[lb.getGroup_v()-1].get(lb.getGroup_h()-2));
+			}
+		}else if(e.getKeyCode()==KeyEvent.VK_DOWN) {
+			if(lb.getGroup_h()!=9) {
+				lb.select(list_v[lb.getGroup_v()-1].get(lb.getGroup_h()));
+			}
+		}else if(e.getKeyCode()==KeyEvent.VK_LEFT) {
+			if(lb.getGroup_v()!=1) {
+				lb.select(list_h[lb.getGroup_h()-1].get(lb.getGroup_v()-2));
+			}
+		}else if(e.getKeyCode()==KeyEvent.VK_RIGHT) {
+			if(lb.getGroup_v()!=9) {
+				lb.select(list_h[lb.getGroup_h()-1].get(lb.getGroup_v()));
+			}
+		}else if(e.getKeyCode()>=KeyEvent.VK_1 && e.getKeyCode()<=KeyEvent.VK_9) {
+			setNumber(lb, (e.getKeyCode()-KeyEvent.VK_1 + 1) + "", true);
+		}else if(e.getKeyCode()>=KeyEvent.VK_NUMPAD1 && e.getKeyCode()<=KeyEvent.VK_NUMPAD9) {
+			setNumber(lb, (e.getKeyCode()-KeyEvent.VK_NUMPAD1 + 1) + "", true);
+		}else if(e.getKeyCode()==KeyEvent.VK_DELETE) {
+			setNumber(lb, "", true);
+		}else if(e.getKeyCode()==KeyEvent.VK_N) {
+			if(note_on_off()) {
+				option[0].setBackground(NumLabel.color_wrong);
+			}else {
+				option[0].setBackground(Color.WHITE);
+			}
+		}
+		
+	}
+
+	@Override
+	public void keyReleased(KeyEvent arg0) {
+		
+	}
+
+	@Override
+	public void keyTyped(KeyEvent arg0) {
+		
+	}
+	
+	public static void main(String[] args) {
+		new Sudoku();
+	}
 }

@@ -66,7 +66,11 @@ public class OptionLabel extends JLabel implements MouseListener {
 	public void mouseClicked(MouseEvent e) {
 		OptionLabel lb = (OptionLabel) e.getSource();
 		if(lb.getText().equals("노트")) {
-			
+			if(sudoku.note_on_off()) {
+				lb.setBackground(NumLabel.color_wrong);
+			}else {
+				lb.setBackground(Color.WHITE);
+			}
 		}else if(lb.getText().equals("힌트")) hint();
 		else if(lb.getText().equals("실행취소")) {
 			List<History> history = sudoku.getHistory();
@@ -76,31 +80,38 @@ public class OptionLabel extends JLabel implements MouseListener {
 				sudoku.getHistory().remove(history.size()-1);
 			}
 		}else if(lb.getText().equals("지우기")) {
+			if(NumLabel.lb_active != null) NumLabel.lb_active.getNote().clear();
 			sudoku.setNumber(NumLabel.lb_active, "", true);
-		}else sudoku.setNumber(NumLabel.lb_active, getText(), true);
+		}else {
+			if (NumLabel.lb_active != null) sudoku.setNumber(NumLabel.lb_active, getText(), true);
+		}
 	}
 
 	@Override
 	public void mouseEntered(MouseEvent e) {
 		OptionLabel lb = (OptionLabel) e.getSource();
-		lb.setBackground(NumLabel.color_mouseover);
+		if(!lb.getText().equals("노트") || (lb.getText().equals("노트") && lb.getBackground()!=NumLabel.color_wrong))
+			lb.setBackground(NumLabel.color_mouseover);
 	}
 
 	@Override
 	public void mouseExited(MouseEvent e) {
 		OptionLabel lb = (OptionLabel) e.getSource();
+		if(!lb.getText().equals("노트") || (lb.getText().equals("노트") && lb.getBackground()!=NumLabel.color_wrong))
 			lb.setBackground(Color.WHITE);
 	}
 
 	@Override
 	public void mousePressed(MouseEvent e) {
 		OptionLabel lb = (OptionLabel) e.getSource();
+		if(!lb.getText().equals("노트") || (lb.getText().equals("노트") && lb.getBackground()!=NumLabel.color_wrong))
 		lb.setBackground(NumLabel.color_clicked);
 	}
 
 	@Override
 	public void mouseReleased(MouseEvent e) {
 		OptionLabel lb = (OptionLabel) e.getSource();
+		if(!lb.getText().equals("노트") && lb.getForeground()==NumLabel.color_wrong)
 		lb.setBackground(NumLabel.color_mouseover);
 	}
 	

@@ -8,7 +8,9 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -19,6 +21,7 @@ public class NumLabel extends JLabel implements MouseListener, KeyListener {
 	private NumLabel[][] p_ar;
 	private int answer;
 	private boolean editable = false, wrong = false;
+	private Set<String> note = new HashSet<String>();
 	
 	public static Color color_main = new Color(52,72,97);
 	public static Color color_mouseover = new Color(221,238,255);
@@ -30,7 +33,7 @@ public class NumLabel extends JLabel implements MouseListener, KeyListener {
 	
 	private Font font_num = new Font("¸¼Àº °íµñ", Font.BOLD, 25);
 	
-	public static NumLabel lb_active, lb_old;
+	public static NumLabel lb_active;
 	private Sudoku sudoku;
 	
 	public NumLabel() {}
@@ -92,6 +95,10 @@ public class NumLabel extends JLabel implements MouseListener, KeyListener {
 		return answer;
 	}
 	
+	public Set<String> getNote(){
+		return note;
+	}
+	
 	public void printGroup(NumLabel lb) {
 		System.out.printf("h: %d, v: %d, s: %d\n", lb.getGroup_h(), lb.getGroup_v(), lb.getGroup_s());
 	}
@@ -102,19 +109,15 @@ public class NumLabel extends JLabel implements MouseListener, KeyListener {
 				? true : false;
 	}
 	
-	public void num_check() {
-		wrong_check();
-	}
-	
 	public void wrong_check() {
 		NumLabel cell;
 		for(int i = 0; i < 9; i++) {
 			for(int j = 0; j < 9; j++) {
 				cell = p_ar[i][j];
 				if(cell.getGroup_h() == group_h || cell.getGroup_s() == group_s || cell.getGroup_v() == group_v)
-					cell.setBackground(color_sameNum);
+					cell.setBackground(color_sameGroup);
 				else cell.setBackground(Color.WHITE);
-				if(lb_active.getText().length()!=0 && cell.getText().equals(lb_active.getText())) cell.setBackground(color_active);
+				if(lb_active.getText().length()!=0 && cell.getText().equals(lb_active.getText())) cell.setBackground(color_sameNum);
 			}
 		}
 		lb_active.setBackground(color_active);
@@ -122,7 +125,7 @@ public class NumLabel extends JLabel implements MouseListener, KeyListener {
 	
 	public void select(NumLabel lb_selected) {
 		lb_active = lb_selected;
-		num_check();
+		wrong_check();
 		for(NumLabel lb : sudoku.getList_all()) {
 			if(lb.wrong && lb.getId()!=lb_active.id) lb.setBackground(color_wrong);
 		}
@@ -163,7 +166,6 @@ public class NumLabel extends JLabel implements MouseListener, KeyListener {
 
 	@Override
 	public void keyPressed(KeyEvent e) {
-		System.out.println(e.getKeyCode());
 		
 	}
 
@@ -182,6 +184,28 @@ public class NumLabel extends JLabel implements MouseListener, KeyListener {
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);
+		int width = getWidth();
+		int height = getHeight();
+		g.setColor(Color.BLACK);
+		g.setFont(new Font("¸¼Àº °íµñ", Font.PLAIN, 13));
+		for(String s : note) {
+			for(int i = 7; i <= 9; i++) {
+				if(s.equals(i+"")) {
+					g.drawString(s, (int)(width/7*(i-6)*1.7), (int)(height/7*2));
+				};
+			}
+			for(int i = 4; i <= 6; i++) {
+				if(s.equals(i+"")) {
+					g.drawString(s, (int)(width/7*(i-3)*1.7), (int)(height/7*4));
+				};
+			}
+			for(int i = 1; i <= 3; i++) {
+				if(s.equals(i+"")) {
+					g.drawString(s, (int)(width/7*(i-0)*1.7), (int)(height/7*6));
+				};
+			}
+		}
+		
 	}
 	
 }
